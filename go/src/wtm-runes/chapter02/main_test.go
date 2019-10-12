@@ -1,13 +1,39 @@
-package main
+package chapter02
 
 import (
 	"fmt"
+	"os"
+	"strings"
 	"testing"
+	"unicode"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func Example() {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"", "EIGHTHS", "fraction"}
+	main()
+	// Output:
+	// U+215C	⅜	VULGAR FRACTION THREE EIGHTHS
+	// U+215D	⅝	VULGAR FRACTION FIVE EIGHTHS
+	// U+215E	⅞	VULGAR FRACTION SEVEN EIGHTHS
+	// 3 character(s) found
+}
+
+func Example_one_arg() {
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+	os.Args = []string{"", "cruzeiro"}
+	main()
+	// Output:
+	// U+20A2	₢	CRUZEIRO SIGN
+	// 1 character(s) found
+}
+
+func Example_no_args() {
+	os.Args = []string{""}
 	main()
 	// Output:
 	// Please provide one or more words to search.
@@ -17,69 +43,21 @@ func Example_report() {
 	report("scruple")
 	// Output:
 	// U+2108	℈	SCRUPLE
-	// 1 character found
+	// 1 character(s) found
+}
+
+func Example_report_2_results() {
+	report("copyright")
+	// Output:
+	// U+00A9	©	COPYRIGHT SIGN
+	// U+2117	℗	SOUND RECORDING COPYRIGHT
+	// 2 character(s) found
 }
 
 func Test_CharName_String(t *testing.T) {
 	want := "U+0041\tA\tLATIN CAPITAL LETTER A"
 	cn := CharName{'A', "LATIN CAPITAL LETTER A"}
 	got := fmt.Sprint(cn)
-	assert.Equal(t, want, got)
-}
-
-func Test_scan_A(t *testing.T) {
-	// given
-	start, end := 'A', 'B'
-	// when
-	got := scan(start, end)
-	// expected
-	want := []CharName{{'A', "LATIN CAPITAL LETTER A"}}
-	if len(got) != 1 {
-		t.Errorf("CharName_String: len(got) = %d; want 1", len(got))
-	}
-	if got[0] != want[0] {
-		t.Errorf("CharName_String\n\tgot:  %q\n\twant: %q", got, want)
-	}
-}
-
-func Test_scan_ABC(t *testing.T) {
-	// given
-	start, end := 'A', 'D'
-	// when
-	got := scan(start, end)
-	// expected
-	want := []CharName{
-		{'A', "LATIN CAPITAL LETTER A"},
-		{'B', "LATIN CAPITAL LETTER B"},
-		{'C', "LATIN CAPITAL LETTER C"},
-	}
-	assert.Equal(t, want, got)
-}
-
-func Test_scan_unassigned(t *testing.T) {
-	// given
-	start, end := '\u0377', '\u037B'
-	// when
-	got := scan(start, end)
-	// expected
-	want := []CharName{
-		{'\u0377', "GREEK SMALL LETTER PAMPHYLIAN DIGAMMA"},
-		{'\u037A', "GREEK YPOGEGRAMMENI"},
-	}
-	assert.Equal(t, want, got)
-}
-
-func Test_scan_unnamed(t *testing.T) {
-	// given
-	start, end := '\x1E', '\x22'
-
-	// when
-	got := scan(start, end)
-	// expected
-	want := []CharName{
-		{'\u0020', "SPACE"},
-		{'\u0021', "EXCLAMATION MARK"},
-	}
 	assert.Equal(t, want, got)
 }
 
@@ -108,6 +86,39 @@ func Test_scan(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.label, func(t *testing.T) {
 			got := scan(tc.start, tc.end)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func Test_filter(t *testing.T) {
+	testCases := []struct {
+		start rune
+		end   rune
+		query []string
+		want  []CharName
+	}{
+		{' ', unicode.MaxRune, []string{"MADEUPWORD"}, []CharName{}},
+		{'\u2108', unicode.MaxRune, []string{"SCRUPLE"}, []CharName{
+			{'\u2108', "SCRUPLE"}}},
+		{'A', 'C', []string{"A"}, []CharName{
+			{'A', "LATIN CAPITAL LETTER A"}}},
+		{'?', 'C', []string{"LETTER", "CAPITAL"}, []CharName{
+			{'A', "LATIN CAPITAL LETTER A"},
+			{'B', "LATIN CAPITAL LETTER B"},
+		}},
+		{',', '/', []string{"MINUS"}, []CharName{
+			{'-', "HYPHEN-MINUS"},
+		}},
+		{'?', 'C', []string{"LeTter", "capital"}, []CharName{
+			{'A', "LATIN CAPITAL LETTER A"},
+			{'B', "LATIN CAPITAL LETTER B"},
+		}},
+	}
+	for _, tc := range testCases {
+		t.Run(strings.Join(tc.query, "+"), func(t *testing.T) {
+			sample := scan(tc.start, tc.end)
+			got := filter(sample, tc.query)
 			assert.Equal(t, tc.want, got)
 		})
 	}
