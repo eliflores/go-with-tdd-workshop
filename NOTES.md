@@ -80,6 +80,7 @@ if v := p.target[p.index]; v > 0 {
     * The send and the read operations are blocking.        
 * Go's work-stealing scheduler (low stealing).
 * The solution in the repo [here](https://github.com/standupdev/runes2019/blob/master/runes/main.go#L22) is using iterators.
+* Fork of the workshop content repo: [https://github.com/mignonnesaurus/runes2019](https://github.com/mignonnesaurus/runes2019)
            
  ## References     
 * [Test Driven Development: By Example](https://www.goodreads.com/book/show/387190.Test_Driven_Development)
